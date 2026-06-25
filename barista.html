@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#3d2c1f">
+  <meta name="description" content="Mode Barista - Luigi's Café">
+  <title>Mode Barista ☕</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Favicon SVG -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="barista-header">
+      <a href="index.html" class="back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Retour
+      </a>
+      
+      <h1 style="font-size: 18px; font-weight: 700; color: var(--primary-dark);">Mode Barista</h1>
+    </div>
+    
+    <!-- Café Status Toggle -->
+    <div class="status-toggle">
+      <label>Statut du café</label>
+      <div class="toggle-switch">
+        <input type="checkbox" id="cafeStatusToggle" checked onchange="toggleStatus(this.checked)">
+        <span class="toggle-slider"></span>
+      </div>
+    </div>
+    
+    <!-- Current Status Display -->
+    <div class="status-container">
+      <div id="statusIndicator" class="status-badge open">
+        ☕ Ouvert
+      </div>
+    </div>
+    
+    <!-- Orders Section -->
+    <section class="section orders-section">
+      <h2 class="section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+        </svg>
+        Commandes en cours
+      </h2>
+      
+      <div id="ordersList">
+        <div class="loading">
+          <div class="loading-spinner"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="firebase-config.js"></script>
+  <script>
+    // Barista Page Logic
+    
+    // State
+    let currentStatus = true;
+    let orders = [];
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeBarista();
+    });
+    
+    async function initializeBarista() {
+      // Load current status
+      if (typeof listenToCafeStatus === 'function') {
+        listenToCafeStatus((status) => {
+          currentStatus = status.isOpen;
+          updateStatusDisplay(status.isOpen);
+          document.getElementById('cafeStatusToggle').checked = status.isOpen;
+        });
+      } else {
+        // Fallback: load from localStorage
+        const savedStatus = localStorage.getItem('cafeIsOpen');
+        currentStatus = savedStatus !== 'false';
+        updateStatusDisplay(currentStatus);
+        document.getElementById('cafeStatusToggle').checked = currentStatus;
+      }
+      
+      // Load orders
+      loadOrders();
+      
+      // Listen for local order updates
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'luigisOrders') {
+          loadOrders();
+        }
+      });
+    }
+    
+    // Toggle café status
+    async function toggleStatus(isOpen) {
+      currentStatus = isOpen;
+      updateStatusDisplay(isOpen);
+      
+      // Save to Firebase if available
+      if (typeof toggleCafeStatus === 'function') {
+        await toggleCafeStatus(isOpen);
+      }
+      
+      // Also save locally
+      localStorage.setItem('cafeIsOpen', isOpen);
+      
+      // Trigger storage event for other pages
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'cafeIsOpen',
+        newValue: isOpen.toString()
+      }));
+      
+      // Show toast
+      showToast(isOpen ? '☕ Café ouvert!' : '🔒 Café fermé');
+    }
+    
+    // Update status display
+    function updateStatusDisplay(isOpen) {
+      const indicator = document.getElementById('statusIndicator');
+      if (isOpen) {
+        indicator.className = 'status-badge open';
+        indicator.innerHTML = '☕ Ouvert';
+      } else {
+        indicator.className = 'status-badge closed';
+        indicator.innerHTML = '🔒 Fermé';
+      }
+    }
+    
+    // Load orders
+    async function loadOrders() {
+      const ordersList = document.getElementById('ordersList');
+      
+      try {
+        // Try to load from Firebase
+        if (typeof listenToOrders === 'function') {
+          listenToOrders((firebaseOrders) => {
+            if (firebaseOrders.length > 0) {
+              orders = firebaseOrders;
+              renderOrders();
+            } else {
+              // Fallback to local
+              loadLocalOrders();
+            }
+          });
+        } else {
+          loadLocalOrders();
+        }
+      } catch (error) {
+        console.error('Erreur chargement:', error);
+        loadLocalOrders();
+      }
+    }
+    
+    // Load orders from localStorage
+    function loadLocalOrders() {
+      const localOrders = JSON.parse(localStorage.getItem('luigisOrders') || '[]');
+      
+      // Filter active orders (not completed)
+      orders = localOrders.filter(order => 
+        order.status !== 'completed' && order.status !== 'ready'
+      );
+      
+      renderOrders();
+    }
+    
+    // Render orders
+    function renderOrders() {
+      const ordersList = document.getElementById('ordersList');
+      
+      if (orders.length === 0) {
+        ordersList.innerHTML = `
+          <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+              <line x1="6" y1="1" x2="6" y2="4"/>
+              <line x1="10" y1="1" x2="10" y2="4"/>
+              <line x1="14" y1="1" x2="14" y2="4"/>
+            </svg>
+            <p>Aucune commande en attente</p>
+            <p style="font-size: 12px; margin-top: 4px;">Les nouvelles commandes apparaîtront ici</p>
+          </div>
+        `;
+        return;
+      }
+      
+      ordersList.innerHTML = orders.map(order => {
+        const statusClass = order.status === 'ready' ? 'ready' : '';
+        const time = order.createdAt ? formatTime(order.createdAt) : 'À l\'instant';
+        
+        return `
+          <div class="order-card fade-in ${statusClass}" data-order-id="${order.id}">
+            <div class="order-header">
+              <span class="order-id">#${order.id?.slice(-6) || '000000'}</span>
+              <span class="order-time">${time}</span>
+            </div>
+            <div class="order-drink">${getDrinkEmoji(order.drink)} ${order.drink}</div>
+            <div class="order-barista">👨‍🍳 Barista: ${order.barista}</div>
+            <div class="order-details" style="font-size: 12px; color: #666; margin-bottom: 8px;">
+              ${order.size ? 'Taille: ' + capitalize(order.size) + ' • ' : ''}
+              ${order.milk && order.milk !== 'none' ? 'Lait: ' + capitalize(order.milk) : ''}
+            </div>
+            <div class="order-actions">
+              ${order.status === 'pending' ? `
+                <button class="btn-action ready" onclick="markReady('${order.id}')">
+                  ✓ Prêt
+                </button>
+              ` : ''}
+              ${order.status === 'ready' ? `
+                <button class="btn-action complete" onclick="markComplete('${order.id}')">
+                  ✓ Remis
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Mark order as ready
+    async function markReady(orderId) {
+      updateOrderInFirebase(orderId, 'ready');
+      updateOrderLocally(orderId, 'ready');
+      showToast('✓ Client notifié!', false);
+    }
+    
+    // Mark order as completed
+    async function markComplete(orderId) {
+      updateOrderInFirebase(orderId, 'completed');
+      updateOrderLocally(orderId, 'completed');
+      showToast('Commande terminée!', false);
+      
+      // Refresh list after animation
+      setTimeout(() => loadOrders(), 300);
+    }
+    
+    // Update order in Firebase
+    async function updateOrderInFirebase(orderId, status) {
+      if (typeof updateOrderStatus === 'function') {
+        await updateOrderStatus(orderId, status);
+      }
+    }
+    
+    // Update order locally
+    function updateOrderLocally(orderId, status) {
+      const localOrders = JSON.parse(localStorage.getItem('luigisOrders') || '[]');
+      const orderIndex = localOrders.findIndex(o => o.id === orderId);
+      
+      if (orderIndex !== -1) {
+        localOrders[orderIndex].status = status;
+        localStorage.setItem('luigisOrders', JSON.stringify(localOrders));
+        
+        // Update UI
+        const orderCard = document.querySelector(`[data-order-id="${orderId}"]`);
+        if (orderCard) {
+          if (status === 'ready') {
+            orderCard.classList.add('ready');
+            orderCard.querySelector('.order-actions').innerHTML = `
+              <button class="btn-action complete" onclick="markComplete('${orderId}')">
+                ✓ Remis
+              </button>
+            `;
+          } else {
+            orderCard.style.opacity = '0.7';
+            const actions = orderCard.querySelector('.order-actions');
+            if (actions) actions.remove();
+          }
+        }
+      }
+    }
+    
+    // Get drink emoji
+    function getDrinkEmoji(drink) {
+      const emojis = {
+        'Espresso': '☕',
+        'Café Long': '☕',
+        'Cappuccino': '🥛',
+        'Latte': '🥛',
+        'Café Glacé': '🧊',
+        'Cold Brew': '🧊',
+        'Mocha': '🍫',
+        'Spécialité Maison': '⭐'
+      };
+      return emojis[drink] || '☕';
+    }
+    
+    // Format time
+    function formatTime(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Capitalize first letter
+    function capitalize(str) {
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    
+    // Show toast
+    function showToast(message, isError = false) {
+      const existingToast = document.querySelector('.toast');
+      if (existingToast) existingToast.remove();
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast' + (isError ? ' error' : '');
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
+  </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"8607d2a720d14b038279025b2b5a82e5","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>

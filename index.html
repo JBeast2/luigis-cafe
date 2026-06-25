@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#3d2c1f">
+  <meta name="description" content="Commandez votre café facilement chez Luigi's Café">
+  <title>Luigi's Café ☕</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Favicon SVG -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">☕</div>
+      <h1 class="title">Luigi's Café</h1>
+      <p class="subtitle">Le meilleur café familial</p>
+    </header>
+    
+    <!-- Status Badge -->
+    <div class="status-container">
+      <div id="statusIndicator" class="status-badge open">
+        ☕ Ouvert
+      </div>
+    </div>
+    
+    <!-- Mode Barista Button -->
+    <div class="barista-toggle">
+      <a href="barista.html" class="btn-barista">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Mode Barista
+      </a>
+    </div>
+    
+    <!-- Barista Selection -->
+    <section class="section">
+      <h2 class="section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Choisissez votre barista
+      </h2>
+      
+      <div class="barista-grid">
+        <div class="barista-card" onclick="selectBarista(this, 'Luigi')">
+          <div class="barista-avatar">👨‍🍳</div>
+          <div class="barista-name">Luigi</div>
+          <div class="barista-specialty">Spécialité: Espresso</div>
+        </div>
+        
+        <div class="barista-card" onclick="selectBarista(this, 'Francesco')">
+          <div class="barista-avatar">🧔</div>
+          <div class="barista-name">Francesco</div>
+          <div class="barista-specialty">Spécialité: Latte Art</div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Drink Selection -->
+    <section class="section">
+      <h2 class="section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/>
+          <line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+        Sélectionnez votre café
+      </h2>
+      
+      <div class="drink-grid">
+        <!-- Hot Drinks -->
+        <div class="drink-card" onclick="selectDrink(this, 'Espresso')">
+          <div class="drink-icon">☕</div>
+          <div class="drink-name">Espresso</div>
+          <div class="drink-price">2,00 €</div>
+        </div>
+        
+        <div class="drink-card" onclick="selectDrink(this, 'Café Long')">
+          <div class="drink-icon">☕</div>
+          <div class="drink-name">Café Long</div>
+          <div class="drink-price">2,50 €</div>
+        </div>
+        
+        <div class="drink-card" onclick="selectDrink(this, 'Cappuccino')">
+          <div class="drink-icon">🥛</div>
+          <div class="drink-name">Cappuccino</div>
+          <div class="drink-price">3,50 €</div>
+        </div>
+        
+        <div class="drink-card" onclick="selectDrink(this, 'Latte')">
+          <div class="drink-icon">🥛</div>
+          <div class="drink-name">Latte</div>
+          <div class="drink-price">3,50 €</div>
+        </div>
+        
+        <!-- Cold Drinks -->
+        <div class="drink-card" onclick="selectDrink(this, 'Café Glacé')">
+          <div class="drink-icon">🧊</div>
+          <div class="drink-name">Café Glacé</div>
+          <div class="drink-price">3,00 €</div>
+        </div>
+        
+        <div class="drink-card" onclick="selectDrink(this, 'Cold Brew')">
+          <div class="drink-icon">🧊</div>
+          <div class="drink-name">Cold Brew</div>
+          <div class="drink-price">4,00 €</div>
+        </div>
+        
+        <!-- Specialties -->
+        <div class="drink-card" onclick="selectDrink(this, 'Mocha')">
+          <div class="drink-icon">🍫</div>
+          <div class="drink-name">Mocha</div>
+          <div class="drink-price">4,50 €</div>
+        </div>
+        
+        <div class="drink-card" onclick="selectDrink(this, 'Spécialité Maison')">
+          <div class="drink-icon">⭐</div>
+          <div class="drink-name">Spécialité Maison</div>
+          <div class="drink-price">5,00 €</div>
+        </div>
+      </div>
+      
+      <!-- Drink Options (hidden by default) -->
+      <div id="drinkOptions" class="option-buttons" style="display: none;">
+        <div class="drink-options-wrapper">
+          <h3 class="section-title" style="font-size: 13px; margin-top: 16px;">Taille</h3>
+          <div id="sizeOptions" class="option-buttons">
+            <button class="option-btn" onclick="selectSize(this, 'small')">Petit</button>
+            <button class="option-btn selected" onclick="selectSize(this, 'medium')">Moyen</button>
+            <button class="option-btn" onclick="selectSize(this, 'large')">Grand</button>
+          </div>
+          
+          <h3 class="section-title" style="font-size: 13px; margin-top: 12px; display: none;" id="milkLabel">Type de lait</h3>
+          <div id="milkOptions" class="option-buttons" style="display: none;">
+            <button class="option-btn" onclick="selectMilk(this, 'whole')">Entier</button>
+            <button class="option-btn selected" onclick="selectMilk(this, 'semi')">Semi</button>
+            <button class="option-btn" onclick="selectMilk(this, 'oat')">Avoine</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Order Button -->
+    <div class="order-section">
+      <button id="orderBtn" class="btn-order" onclick="placeOrder()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        Commander
+      </button>
+    </div>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"8607d2a720d14b038279025b2b5a82e5","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
