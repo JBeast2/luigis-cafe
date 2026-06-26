@@ -2,12 +2,12 @@
 // Remplacez par vos identifiants Firebase
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCPTrqE_xS1JNtcNV19GtVxS4K99h6ZkLU",
+  apiKey: "",
   authDomain: "luigis-cafe.firebaseapp.com",
   projectId: "708853192485",
   storageBucket: "luigis-cafe.appspot.com",
   messagingSenderId: "708853192485",
-  appId: "1:708853192485:web:30d9746ccbc89e0abcaccc"
+  appId: "c"
 };
 
 // Initialize Firebase
